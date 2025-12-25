@@ -4,16 +4,13 @@ Simple party social deduction game built with Expo web, deployed on Vercel.
 
 ## Quick start
 1. Install deps: `npm install`
-2. (Optional, for multi-device) Add env vars:  
-   - `EXPO_PUBLIC_SUPABASE_URL`  
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-3. Run locally: `npm run dev`
-4. Build for Vercel: `npm run build:web`
+2. Run locally (web): `npm run dev`
+3. Build for Vercel: `npm run build:web`
 
 ## How to play
-- **Multi-device (requires Supabase envs):** Host creates a party; friends join with the code. Roles are shown on each device in turn. Host advances players/rounds.
-- **Single-device fallback (no envs):** App automatically switches to pass-the-phone mode; everyone plays on one device.
+- **Multi-device:** Host creates a session code, friends join on their phones, first join becomes admin.
+- **Admin flow:** Admin starts the game, can eliminate (“kill”) players, then advances to the next round to deal new words.
 
 ## Repo notes
-- Realtime sync via Supabase Realtime channels (client only).
-- New files: `src/lib/supabase.js`, `src/hooks/usePartyState.js`, `src/screens/PartyScreen.js`.
+- Multiplayer state is stored in-memory inside the Vercel Serverless Function at `api/multiplayer.js` (no database).
+- This is best-effort for party play: serverless instances can restart or scale, which can reset/split sessions.
