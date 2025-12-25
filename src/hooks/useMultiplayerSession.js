@@ -51,6 +51,7 @@ export function useMultiplayerSession() {
   const [sessionId, setSessionId] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [playerToken, setPlayerToken] = useState("");
+  const [sessionBlob, setSessionBlob] = useState("");
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
   const [error, setError] = useState("");
@@ -109,10 +110,16 @@ export function useMultiplayerSession() {
         setSessionId(data.sessionId);
         setPlayerId(data.playerId);
         setPlayerToken(data.playerToken);
+        setSessionBlob(data.sessionBlob);
         setSession(data.session);
         setMe(data.me);
         setUrlCode(data.sessionId);
-        await saveCreds({ sessionId: data.sessionId, playerId: data.playerId, playerToken: data.playerToken });
+        await saveCreds({
+          sessionId: data.sessionId,
+          playerId: data.playerId,
+          playerToken: data.playerToken,
+          sessionBlob: data.sessionBlob,
+        });
       } catch (err) {
         setError(err.message || "Failed to join");
       } finally {
@@ -123,16 +130,17 @@ export function useMultiplayerSession() {
   );
 
   const refresh = useCallback(async () => {
-    if (!sessionId || !playerToken) return;
+    if (!sessionId || !playerToken || !sessionBlob) return;
     try {
-      const data = await apiCall({ op: "state", sessionId, playerToken });
+      const data = await apiCall({ op: "state", sessionId, playerToken, sessionBlob });
       setSession(data.session);
       setMe(data.me);
+      setSessionBlob(data.sessionBlob);
       setError("");
     } catch (err) {
       setError(err.message || "Disconnected");
     }
-  }, [playerToken, sessionId]);
+  }, [playerToken, sessionBlob, sessionId]);
 
   // Poll server state (keeps function warm and syncs session).
   useEffect(() => {
@@ -155,60 +163,68 @@ export function useMultiplayerSession() {
   }, [playerToken, refresh, sessionId]);
 
   const startGame = useCallback(async ({ showHints }) => {
-    if (!sessionId || !playerToken) return;
+    if (!sessionId || !playerToken || !sessionBlob) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall({ op: "start", sessionId, playerToken, showHints: Boolean(showHints) });
+      const data = await apiCall({ op: "start", sessionId, playerToken, showHints: Boolean(showHints), sessionBlob });
+      setSession(data.session);
+      setSessionBlob(data.sessionBlob);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to start");
     } finally {
       setLoading(false);
     }
-  }, [playerToken, refresh, sessionId]);
+  }, [playerToken, refresh, sessionBlob, sessionId]);
 
   const killPlayer = useCallback(async ({ targetPlayerId }) => {
-    if (!sessionId || !playerToken) return;
+    if (!sessionId || !playerToken || !sessionBlob) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall({ op: "kill", sessionId, playerToken, targetPlayerId });
+      const data = await apiCall({ op: "kill", sessionId, playerToken, targetPlayerId, sessionBlob });
+      setSession(data.session);
+      setSessionBlob(data.sessionBlob);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to kill");
     } finally {
       setLoading(false);
     }
-  }, [playerToken, refresh, sessionId]);
+  }, [playerToken, refresh, sessionBlob, sessionId]);
 
   const nextRound = useCallback(async ({ showHints }) => {
-    if (!sessionId || !playerToken) return;
+    if (!sessionId || !playerToken || !sessionBlob) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall({ op: "nextRound", sessionId, playerToken, showHints: Boolean(showHints) });
+      const data = await apiCall({ op: "nextRound", sessionId, playerToken, showHints: Boolean(showHints), sessionBlob });
+      setSession(data.session);
+      setSessionBlob(data.sessionBlob);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to start next round");
     } finally {
       setLoading(false);
     }
-  }, [playerToken, refresh, sessionId]);
+  }, [playerToken, refresh, sessionBlob, sessionId]);
 
   const reset = useCallback(async () => {
-    if (!sessionId || !playerToken) return;
+    if (!sessionId || !playerToken || !sessionBlob) return;
     setLoading(true);
     setError("");
     try {
-      await apiCall({ op: "reset", sessionId, playerToken });
+      const data = await apiCall({ op: "reset", sessionId, playerToken, sessionBlob });
+      setSession(data.session);
+      setSessionBlob(data.sessionBlob);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to reset");
     } finally {
       setLoading(false);
     }
-  }, [playerToken, refresh, sessionId]);
+  }, [playerToken, refresh, sessionBlob, sessionId]);
 
   const isConnected = Boolean(sessionId && playerToken);
   const isAdmin = Boolean(me?.isAdmin);
@@ -227,6 +243,7 @@ export function useMultiplayerSession() {
     playerId,
     playerToken,
     session,
+    sessionBlob,
     me,
     shareUrl,
     loading,
