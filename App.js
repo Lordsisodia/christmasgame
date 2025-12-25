@@ -9,8 +9,16 @@ import { RevealScreen } from "./src/screens/RevealScreen";
 import { SummaryScreen } from "./src/screens/SummaryScreen";
 import { usePartyState } from "./src/hooks/usePartyState";
 import { theme } from "./src/theme";
+import { supabaseReady } from "./src/lib/supabase";
+import { HINTS, WORDS, pick, scoresFor } from "./src/utils/game";
 
 const randomId = () => `p-${Math.random().toString(16).slice(2, 8)}`;
+const DEFAULT_PLAYERS = [
+  { id: "p1", name: "alex" },
+  { id: "p2", name: "siso" },
+  { id: "p3", name: "cam" },
+  { id: "p4", name: "charlie" },
+];
 
 export default function App() {
   const [rounds, setRounds] = useState(3);
@@ -19,6 +27,10 @@ export default function App() {
   const [partyCode, setPartyCode] = useState("");
   const [isHost, setIsHost] = useState(false);
   const [me, setMe] = useState(null);
+  const [localPlayers, setLocalPlayers] = useState(DEFAULT_PLAYERS);
+  const [localScores, setLocalScores] = useState(() => Object.fromEntries(DEFAULT_PLAYERS.map((p) => [p.id, 0])));
+  const [localGame, setLocalGame] = useState(null);
+  const [localScreen, setLocalScreen] = useState("lobby"); // lobby | handout
 
   const { state: partyState, broadcast, startGame, nextHandout, recordVotes } = usePartyState({
     code: partyCode,
@@ -26,6 +38,46 @@ export default function App() {
     isHost,
     showHints,
   });
+
+  // Single-device fallback if Supabase is not configured
+  const startLocalGame = () => {
+    const word = pick(WORDS);
+    const impostor = pick(localPlayers);
+    const hint = pick(HINTS[word]);
+    const baseScores = scoresFor(localPlayers, localScores);
+    setLocalGame({
+      players: localPlayers,
+      word,
+      hint,
+      impostorId: impostor.id,
+      roleIndex: 0,
+      roundNumber: 1,
+      scores: baseScores,
+    });
+    setLocalScreen("handout");
+  };
+
+  const nextLocalHandout = () => {
+    if (!localGame) return;
+    const next = localGame.roleIndex + 1;
+    if (next >= localGame.players.length) {
+      const roundNumber = (localGame.roundNumber || 1) + 1;
+      const word = pick(WORDS);
+      const impostor = pick(localPlayers);
+      const hint = pick(HINTS[word]);
+      setLocalGame({
+        players: localPlayers,
+        word,
+        hint,
+        impostorId: impostor.id,
+        roleIndex: 0,
+        roundNumber,
+        scores: localGame.scores,
+      });
+      return;
+    }
+    setLocalGame({ ...localGame, roleIndex: next });
+  };
 
   // Host seeds initial state once.
   useEffect(() => {
@@ -87,6 +139,42 @@ export default function App() {
   const targetPlayer = currentHandout && players[currentHandout.index || 0];
   const isMyTurn = targetPlayer && me && targetPlayer.id === me.id;
   const isImpostor = me && currentHandout && me.id === currentHandout.impostorId;
+
+  // ---------- Fallback: no Supabase env, use pass-the-phone local mode ----------
+  if (!supabaseReady) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.container}>
+          <View style={[styles.card, { marginBottom: 10 }]}>
+            <Text style={styles.hero}>Multiplayer off (no Supabase env)</Text>
+            <Text style={styles.subhero}>Using local pass-the-phone flow.</Text>
+          </View>
+          {localScreen === "lobby" && (
+            <LobbyScreen
+              players={localPlayers}
+              setPlayers={setLocalPlayers}
+              rounds={rounds}
+              setRounds={setRounds}
+              showHints={showHints}
+              setShowHints={setShowHints}
+              onStart={startLocalGame}
+            />
+          )}
+          {localScreen === "handout" && localGame && (
+            <HandoutScreen
+              player={localGame.players[localGame.roleIndex]}
+              isImpostor={localGame.players[localGame.roleIndex].id === localGame.impostorId}
+              word={localGame.word}
+              hint={showHints ? localGame.hint : null}
+              index={localGame.roleIndex}
+              total={localGame.players.length}
+              onNext={nextLocalHandout}
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>

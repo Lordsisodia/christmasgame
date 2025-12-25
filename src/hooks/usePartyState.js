@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, supabaseReady } from "../lib/supabase";
 import { pick, HINTS, WORDS, scoresFor, applyScores } from "../utils/game";
 
 export function usePartyState({ code, me, isHost, showHints }) {
   const [state, setState] = useState(null); // {players, status, roundNumber, currentHandout, scores, votes}
   const channel = useMemo(() => {
-    if (!code) return null;
+    if (!code || !supabaseReady) return null;
     return supabase.channel(`party:${code}`, { config: { broadcast: { ack: true } } });
-  }, [code]);
+  }, [code, supabaseReady]);
 
   const broadcast = useCallback(
     (next) => {
