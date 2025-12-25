@@ -5,6 +5,7 @@ Simple party social deduction game built with Expo web, deployed on Vercel.
 ## Quick start
 1. Install deps: `npm install`
 2. Run locally (web): `npm run dev`
+   - Optional: set `EXPO_PUBLIC_API_BASE=https://<your-vercel-domain>` so local dev hits the deployed function.
 3. Build for Vercel: `npm run build:web`
 
 ## How to play

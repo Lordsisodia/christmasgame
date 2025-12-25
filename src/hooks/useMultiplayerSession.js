@@ -3,13 +3,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const STORAGE_KEY = "christmasgame/multiplayer";
 
+const API_BASE = (process.env.EXPO_PUBLIC_API_BASE || "").replace(/\/+$/, "");
+
 async function apiCall(payload) {
-  const res = await fetch("/api/multiplayer", {
+  const url = `${API_BASE || ""}/api/multiplayer`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let data = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = {};
+  }
   if (!res.ok || !data?.ok) {
     const message = data?.error || `Request failed (${res.status})`;
     throw new Error(message);
@@ -231,4 +240,3 @@ export function useMultiplayerSession() {
     clearCreds,
   };
 }
-
