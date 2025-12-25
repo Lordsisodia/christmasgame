@@ -165,15 +165,6 @@ function playerView(session, playerId) {
 
 function startOrNextRound(session, { showHints }) {
   const alive = session.players.filter((p) => p.alive);
-  if (alive.length < 2) {
-    session.status = "ended";
-    session.word = null;
-    session.hint = null;
-    session.impostorId = null;
-    session.updatedAt = now();
-    return;
-  }
-
   const word = pick(WORDS);
   const hintPool = HINTS[word] || [""];
   const hint = showHints ? pick(hintPool) : null;
@@ -321,6 +312,8 @@ module.exports = async (req, res) => {
   // START
   if (op === "start") {
     if (session.status !== "lobby") return badRequest(res, "Game already started");
+    const alive = session.players.filter((p) => p.alive);
+    if (alive.length < 2) return badRequest(res, "Need at least 2 players to start");
     startOrNextRound(session, { showHints: Boolean(body.showHints) });
     const sessionBlob = updateSessionBlob(session);
     return json(res, 200, { ok: true, session: publicSessionState(session), sessionBlob });
@@ -346,6 +339,8 @@ module.exports = async (req, res) => {
   // NEXT ROUND
   if (op === "nextRound") {
     if (session.status === "ended") return badRequest(res, "Game has ended");
+    const alive = session.players.filter((p) => p.alive);
+    if (alive.length < 2) return badRequest(res, "Need at least 2 players alive");
     startOrNextRound(session, { showHints: Boolean(body.showHints) });
     const sessionBlob = updateSessionBlob(session);
     return json(res, 200, { ok: true, session: publicSessionState(session), sessionBlob });
@@ -365,4 +360,3 @@ module.exports = async (req, res) => {
 
   return badRequest(res, `Unknown op: ${op}`);
 };
-
